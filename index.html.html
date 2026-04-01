@@ -285,13 +285,6 @@ document.querySelectorAll('.pill').forEach(p => {
 });
 
 async function generate() {
-  if (API_KEY === 'YOUR_API_KEY_HERE') {
-    const errMsg = document.getElementById('errMsg');
-    errMsg.style.display = 'block';
-    errMsg.textContent = 'HTML 파일에서 API_KEY를 실제 키로 교체해 주세요.';
-    return;
-  }
-
   const domain = document.getElementById('domain').value;
   const disease = document.getElementById('disease').value || '적합한 질환 자동 선택';
   const extra = document.getElementById('extra').value;
@@ -328,23 +321,13 @@ ${extra ? '추가 조건: ' + extra : ''}
 위 파라미터로 MCQ 1문항을 생성하세요.`;
 
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await fetch('/api/generate', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': API_KEY,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1000,
-        system: systemPrompt,
-        messages: [{ role: 'user', content: userPrompt }]
-      })
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ systemPrompt, userPrompt })
     });
     const data = await res.json();
-    if (data.error) throw new Error(data.error.message);
+    if (data.error) throw new Error(data.error);
     const item = JSON.parse(data.content[0].text.replace(/```json|```/g,'').trim());
     itemCount++;
     renderItem(item, domain);

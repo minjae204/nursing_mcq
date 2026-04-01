@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>간호사 국가시험 MCQ 자동생성 시스템</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500&display=swap');
+  :root {
+    --bg:#f4f6f9; --surface:#ffffff; --surface2:#f0f2f5;
+    --border:#e2e6ec; --accent:#3b6ef8;
+    --strong:#e0440e; --weak:#0a7c5c; --amber:#b07d00;
+    --text:#1a1d23; --text2:#6b7280; --text3:#adb5bd;
+    --slot-bg:#fffbea; --slot-border:#f0d060;
+    --r:10px; --rl:14px;
+    --shadow:0 1px 4px rgba(0,0,0,0.07), 0 4px 16px rgba(0,0,0,0.04);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+  /* ===== 잠금 화면 ===== */
+  #lockScreen {
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    min-height:100vh; padding:24px; background:var(--bg);
+  }
+  .lock-box {
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:20px; padding:40px 36px; width:100%; max-width:380px;
+    text-align:center; box-shadow:var(--shadow);
+  }
+  .lock-icon { font-size:38px; margin-bottom:16px; }
+  .lock-title { font-size:18px; font-weight:700; margin-bottom:6px; color:var(--text); }
+  .lock-sub { font-size:13px; color:var(--text2); margin-bottom:26px; line-height:1.7; }
+  .lock-input {
+    width:100%; background:var(--surface2); border:1.5px solid var(--border);
+    border-radius:var(--r); color:var(--text); font-family:'Noto Sans KR',sans-serif;
+    font-size:15px; padding:12px 16px; outline:none; text-align:center;
+    letter-spacing:0.12em; margin-bottom:10px; transition:border-color .2s;
+  }
+  .lock-input:focus { border-color:var(--accent); background:#fff; }
+  .lock-btn {
+    width:100%; padding:12px; border-radius:var(--r); border:none;
+    background:var(--accent); color:#fff; font-family:'Noto Sans KR',sans-serif;
+    font-size:14px; font-weight:600; cursor:pointer; transition:all .2s;
+    letter-spacing:0.02em;
+  }
+  .lock-btn:hover { background:#2d5ce6; transform:translateY(-1px); box-shadow:0 4px 12px rgba(59,110,248,0.3); }
+  .lock-error {
+    font-size:12px; color:#c0392b; margin-top:10px;
+    background:#fef2f2; border:1px solid #fecaca;
+    padding:8px 12px; border-radius:6px; display:none;
+  }
+  .lock-attempts { font-size:11px; color:var(--text3); margin-top:8px; }
+
+  /* ===== 메인 앱 ===== */
+  #mainApp { display:none; padding:28px 32px; max-width:1200px; margin:0 auto; }
+  h1{font-size:20px;font-weight:700;letter-spacing:-0.02em;color:var(--text);}
+  .badge{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent);background:rgba(59,110,248,0.08);border:1px solid rgba(59,110,248,0.2);padding:2px 9px;border-radius:4px;font-weight:500;}
+  .panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:22px;box-shadow:var(--shadow);}
+  .panel-title{font-size:11px;color:var(--text2);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:16px;display:flex;align-items:center;gap:7px;font-weight:600;}
+  .panel-title::before{content:'';display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--accent);}
+  .field{margin-bottom:14px;}
+  label{display:block;font-size:12px;color:var(--text2);margin-bottom:5px;font-weight:500;}
+  .slot-tag{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--amber);background:var(--slot-bg);border:1px solid var(--slot-border);padding:1px 5px;border-radius:3px;margin-right:4px;}
+  select,input[type=text]{width:100%;background:#fff;border:1.5px solid var(--border);border-radius:var(--r);color:var(--text);font-family:'Noto Sans KR',sans-serif;font-size:13px;padding:8px 12px;outline:none;transition:border-color .2s;}
+  select:focus,input[type=text]:focus{border-color:var(--accent);}
+  .pills{display:flex;flex-wrap:wrap;gap:6px;}
+  .pill{font-size:11px;padding:5px 11px;border-radius:20px;border:1.5px solid var(--border);color:var(--text2);cursor:pointer;background:#fff;font-family:'Noto Sans KR',sans-serif;transition:all .15s;font-weight:400;}
+  .pill:hover{border-color:#adb5bd;}
+  .pill.s{background:#fff5f2;border-color:#e0440e;color:#c03800;font-weight:500;}
+  .pill.w{background:#f0faf6;border-color:#0a7c5c;color:#076648;font-weight:500;}
+  .slot-preview{background:var(--slot-bg);border:1px solid var(--slot-border);border-radius:var(--r);padding:12px 14px;margin-top:12px;}
+  .slot-preview-title{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--amber);margin-bottom:7px;font-weight:500;}
+  .hl{background:#fff3cd;border:1px solid var(--slot-border);color:var(--amber);padding:0 4px;border-radius:3px;font-family:'JetBrains Mono',monospace;font-size:10px;}
+  hr{border:none;border-top:1px solid var(--border);margin:16px 0;}
+  .gen-btn{width:100%;padding:12px;border-radius:var(--r);border:none;background:var(--accent);color:#fff;font-family:'Noto Sans KR',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:14px;letter-spacing:0.01em;}
+  .gen-btn:hover{background:#2d5ce6;transform:translateY(-1px);box-shadow:0 4px 12px rgba(59,110,248,0.28);}
+  .gen-btn:disabled{background:var(--surface2);color:var(--text3);cursor:not-allowed;transform:none;box-shadow:none;}
+  .layout{display:grid;grid-template-columns:320px 1fr;gap:20px;align-items:start;}
+  .result-area{display:flex;flex-direction:column;gap:16px;}
+  .result-panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:24px;min-height:300px;box-shadow:var(--shadow);}
+  .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:260px;color:var(--text3);gap:10px;}
+  .item-num{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent);margin-bottom:10px;font-weight:500;}
+  .aux-box{background:#f0f6ff;border-left:3px solid var(--accent);border-radius:0 8px 8px 0;padding:11px 15px;margin-bottom:16px;font-size:13px;line-height:1.85;color:#1a1d23;}
+  .stem{font-size:14px;line-height:1.9;margin-bottom:18px;color:var(--text);font-weight:500;}
+  .opt{display:flex;align-items:flex-start;gap:10px;padding:11px 14px;border-radius:var(--r);border:1.5px solid var(--border);font-size:13px;line-height:1.6;margin-bottom:8px;background:#fff;transition:border-color .15s;}
+  .opt.correct{border-color:#0a7c5c;background:#f0faf6;}
+  .opt-num{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text3);min-width:18px;padding-top:1px;}
+  .opt.correct .opt-num{color:#0a7c5c;font-weight:600;}
+  .correct-mark{margin-left:auto;font-size:11px;color:#0a7c5c;font-family:'JetBrains Mono',monospace;font-weight:600;}
+  .tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:16px;padding-top:16px;border-top:1px solid var(--border);}
+  .tag{font-family:'JetBrains Mono',monospace;font-size:10px;padding:3px 8px;border-radius:4px;background:var(--slot-bg);border:1px solid var(--slot-border);color:var(--amber);}
+  .copy-btn{font-size:12px;padding:6px 12px;border-radius:7px;border:1.5px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;font-family:'Noto Sans KR',sans-serif;transition:all .15s;font-weight:500;}
+  .copy-btn:hover{border-color:var(--accent);color:var(--accent);background:#f4f7ff;}
+  .history-panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:18px 20px;box-shadow:var(--shadow);}
+  .hist-item{padding:9px 13px;border-radius:var(--r);background:var(--surface2);border:1.5px solid var(--border);font-size:12px;color:var(--text2);cursor:pointer;margin-bottom:7px;transition:all .15s;}
+  .hist-item:hover{border-color:var(--accent);color:var(--text);background:#f4f7ff;}
+  .err{background:#fef2f2;border:1px solid #fecaca;color:#c0392b;padding:10px 13px;border-radius:var(--r);font-size:12px;margin-top:10px;display:none;}
+  .skeleton{background:linear-gradient(90deg,#eef0f3 25%,#f8f9fa 50%,#eef0f3 75%);background-size:200% 100%;animation:shimmer 1.2s infinite;border-radius:6px;height:14px;margin-bottom:10px;}
+  @keyframes shimmer{to{background-position:-200% 0;}}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  @media(max-width:700px){.layout{grid-template-columns:1fr;}#mainApp{padding:16px;}}
+</style>
+</head>
+<body>
+
+<!-- ===== 잠금 화면 ===== -->
+<div id="lockScreen">
+  <div class="lock-box">
+    <div class="lock-icon">🔒</div>
+    <div class="lock-title">간호사 국가시험 MCQ 자동생성</div>
+    <div class="lock-sub">연구팀 전용 시스템입니다.<br>비밀번호를 입력해 주세요.</div>
+    <input class="lock-input" type="password" id="pwInput" placeholder="비밀번호 입력"
+      onkeydown="if(event.key==='Enter') checkPw()">
+    <button class="lock-btn" onclick="checkPw()">입력</button>
+    <div class="lock-error" id="lockError">비밀번호가 올바르지 않습니다.</div>
+    <div class="lock-attempts" id="lockAttempts"></div>
+  </div>
+</div>
+
+<!-- ===== 메인 앱 ===== -->
+<div id="mainApp">
+  <div style="border-bottom:1px solid var(--border);padding-bottom:16px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;">
+    <div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:5px;">
+        <span class="badge">STEP 3</span>
+        <h1>간호사 국가시험 MCQ 자동생성 시스템</h1>
+      </div>
+      <p style="font-size:12px;color:var(--text2);">온톨로지 슬롯 기반 · 인지이론 분류 · 성인간호학 전용 · 연구팀 전용</p>
+    </div>
+    <button onclick="lockApp()" style="font-size:11px;padding:5px 12px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text3);cursor:pointer;font-family:'Noto Sans KR',sans-serif;">잠금</button>
+  </div>
+
+  <div class="layout">
+    <div class="panel">
+      <div class="panel-title">파라미터 설정</div>
+
+      <div class="field">
+        <label><span class="slot-tag">[DOMAIN]</span>출제 영역</label>
+        <select id="domain" disabled style="background:var(--surface2);color:var(--text2);cursor:default;">
+          <option>성인간호학</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label><span class="slot-tag">[ITEM_TYPE]</span>문항 유형</label>
+        <div class="pills" id="pills">
+          <button class="pill s" data-type="임상상황 판단형" data-cog="strong">임상상황 판단형</button>
+          <button class="pill" data-type="우선순위 결정형" data-cog="strong">우선순위 결정형</button>
+          <button class="pill" data-type="교육·평가형" data-cog="strong">교육·평가형</button>
+          <button class="pill" data-type="절차·방법 확인형" data-cog="weak">절차·방법 확인형</button>
+          <button class="pill" data-type="개념·원리 적용형" data-cog="weak">개념·원리 적용형</button>
+          <button class="pill" data-type="계산 적용형" data-cog="weak">계산 적용형</button>
+        </div>
+      </div>
+
+      <hr>
+
+      <div class="field">
+        <label><span class="slot-tag">[DISEASE]</span>질환/주제</label>
+        <select id="disease">
+          <option value="">(자동 선택)</option>
+          <option>당뇨병</option><option>심근경색</option><option>폐렴</option>
+          <option>뇌졸중</option><option>간경화</option><option>갑상샘항진증</option>
+          <option>만성신부전</option><option>골절</option><option>천식</option>
+          <option>파킨슨병</option><option>크론병</option><option>백혈병</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label><span class="slot-tag">[CONSTRAINT]</span>추가 조건</label>
+        <input type="text" id="extra" placeholder="예: 수술 후 24시간, 고령 환자 등">
+      </div>
+
+      <div class="slot-preview">
+        <div class="slot-preview-title">// 템플릿 슬롯 미리보기</div>
+        <div style="font-size:12px;line-height:1.8;" id="slotPreview">
+          <span class="hl">[DISEASE]</span> 환자의 <span class="hl">[VITAL_SIGN]</span>이
+          <span class="hl">[VALUE]</span>일 때 우선적인 간호중재는?
+        </div>
+      </div>
+
+      <div class="err" id="errMsg"></div>
+
+      <button class="gen-btn" id="genBtn" onclick="generate()">
+        <span id="genSpinner" style="display:none;width:15px;height:15px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;"></span>
+        <span id="genTxt">문항 생성</span>
+      </button>
+    </div>
+
+    <div class="result-area">
+      <div class="result-panel" id="resultPanel">
+        <div class="empty">
+          <div style="font-size:30px;opacity:.25;">✦</div>
+          <div style="font-size:13px;">파라미터를 설정하고 문항을 생성해 주세요</div>
+        </div>
+      </div>
+      <div id="historyPanel" style="display:none;" class="history-panel">
+        <div class="panel-title">생성 히스토리</div>
+        <div id="historyList" style="max-height:200px;overflow-y:auto;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== 설정 =====
+// ⚠️ 아래 YOUR_API_KEY_HERE 를 본인의 Anthropic API 키로 교체하세요
+const API_KEY = 'YOUR_API_KEY_HERE';
+const PASSWORD_HASH = '7c5e8b3a9f2d1e6c4b0a8f3d2e7c5b9a1f4e8d2c6b0a3f7e1d5c9b2a4f6e8d0'; // rnrtldnjs의 해시
+
+// ===== 비밀번호 검증 =====
+let failCount = 0;
+
+async function hashPw(pw) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pw));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+async function checkPw() {
+  const pw = document.getElementById('pwInput').value;
+  const hash = await hashPw(pw);
+  const correctHash = await hashPw('rnrtldnjs');
+
+  if (hash === correctHash) {
+    document.getElementById('lockScreen').style.display = 'none';
+    document.getElementById('mainApp').style.display = 'block';
+    sessionStorage.setItem('mcq_unlocked', '1');
+  } else {
+    failCount++;
+    const errEl = document.getElementById('lockError');
+    errEl.style.display = 'block';
+    document.getElementById('pwInput').value = '';
+    if (failCount >= 5) {
+      document.getElementById('lockAttempts').textContent = `시도 횟수 초과. 잠시 후 다시 시도해 주세요.`;
+      document.querySelector('.lock-btn').disabled = true;
+      setTimeout(() => {
+        document.querySelector('.lock-btn').disabled = false;
+        failCount = 0;
+        document.getElementById('lockAttempts').textContent = '';
+      }, 30000);
+    } else {
+      document.getElementById('lockAttempts').textContent = `시도 ${failCount}/5`;
+    }
+  }
+}
+
+function lockApp() {
+  sessionStorage.removeItem('mcq_unlocked');
+  document.getElementById('mainApp').style.display = 'none';
+  document.getElementById('lockScreen').style.display = 'flex';
+  document.getElementById('pwInput').value = '';
+}
+
+// 세션 유지
+window.onload = () => {
+  if (sessionStorage.getItem('mcq_unlocked')) {
+    document.getElementById('lockScreen').style.display = 'none';
+    document.getElementById('mainApp').style.display = 'block';
+  }
+};
+
+// ===== 문항 생성 =====
+let selType = '임상상황 판단형';
+let selCog = 'strong';
+let itemCount = 0;
+let historyArr = [];
+
+const slotTpls = {
+  '임상상황 판단형': '<span class="hl">[DISEASE]</span> 환자의 <span class="hl">[VITAL_SIGN]</span>이 <span class="hl">[VALUE]</span>일 때 우선적인 간호중재는?',
+  '우선순위 결정형': '<span class="hl">[CONDITION]</span> 환자에게 <span class="hl">[SITUATION]</span> 발생 시 가장 먼저 해야 할 것은?',
+  '교육·평가형': '<span class="hl">[DISEASE]</span> 환자에게 <span class="hl">[EDU_TOPIC]</span> 교육 후 추가교육이 필요한 반응은?',
+  '절차·방법 확인형': '<span class="hl">[PROCEDURE]</span>를 올바르게 수행한 것은?',
+  '개념·원리 적용형': '<span class="hl">[DISEASE/STATE]</span>에서 나타나는 <span class="hl">[ASPECT]</span>는?',
+  '계산 적용형': '<span class="hl">[DRUG]</span> <span class="hl">[DOSE]</span>가 처방됐을 때 <span class="hl">[CALC_QUESTION]</span>?',
+};
+
+document.querySelectorAll('.pill').forEach(p => {
+  p.addEventListener('click', () => {
+    document.querySelectorAll('.pill').forEach(x => x.className = 'pill');
+    selCog = p.dataset.cog;
+    p.className = 'pill ' + (selCog === 'strong' ? 's' : 'w');
+    selType = p.dataset.type;
+    document.getElementById('slotPreview').innerHTML = slotTpls[selType] || '';
+  });
+});
+
+async function generate() {
+  if (API_KEY === 'YOUR_API_KEY_HERE') {
+    const errMsg = document.getElementById('errMsg');
+    errMsg.style.display = 'block';
+    errMsg.textContent = 'HTML 파일에서 API_KEY를 실제 키로 교체해 주세요.';
+    return;
+  }
+
+  const domain = document.getElementById('domain').value;
+  const disease = document.getElementById('disease').value || '적합한 질환 자동 선택';
+  const extra = document.getElementById('extra').value;
+  const btn = document.getElementById('genBtn');
+  const spinner = document.getElementById('genSpinner');
+  const genTxt = document.getElementById('genTxt');
+  const errMsg = document.getElementById('errMsg');
+
+  btn.disabled = true;
+  spinner.style.display = 'inline-block';
+  genTxt.textContent = '생성 중...';
+  errMsg.style.display = 'none';
+
+  document.getElementById('resultPanel').innerHTML =
+    [90,70,80,65,75,60,70].map(w =>
+      `<div class="skeleton" style="width:${w}%"></div>`
+    ).join('');
+
+  const systemPrompt = `당신은 한국 간호사 국가시험 문항 자동생성 시스템입니다.
+반드시 아래 JSON만 출력하세요. 마크다운이나 설명 없이 JSON만 응답하세요.
+{
+  "auxiliaryInfo": "상황박스 내용 (없으면 빈 문자열)",
+  "stem": "문항줄기",
+  "options": ["내용1","내용2","내용3","내용4","내용5"],
+  "correctIndex": 0,
+  "ontologySlots": {"DISEASE":"질환명","ITEM_TYPE":"유형","KEY_VARIABLE":"핵심변수"}
+}
+규칙: 5지선다 최선답형, 실제 간호사 국가시험 수준, correctIndex 0~4, 오답은 그럴듯하게 구성`;
+
+  const userPrompt = `영역: ${domain}
+문항유형: ${selType} (${selCog === 'strong' ? '강한' : '약한'} 인지이론)
+질환/주제: ${disease}
+${extra ? '추가 조건: ' + extra : ''}
+위 파라미터로 MCQ 1문항을 생성하세요.`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': API_KEY,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userPrompt }]
+      })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+    const item = JSON.parse(data.content[0].text.replace(/```json|```/g,'').trim());
+    itemCount++;
+    renderItem(item, domain);
+    addHistory(item, domain);
+  } catch(e) {
+    document.getElementById('resultPanel').innerHTML = `
+      <div class="empty">
+        <div style="font-size:28px;opacity:.4;">⚠</div>
+        <div style="color:var(--strong);font-size:13px;">오류: ${e.message}</div>
+      </div>`;
+  } finally {
+    btn.disabled = false;
+    spinner.style.display = 'none';
+    genTxt.textContent = '문항 생성';
+  }
+}
+
+function renderItem(item, domain) {
+  const cogColor = selCog==='strong'?'#c03800':'#076648';
+  const cogBg = selCog==='strong'?'#fff5f2':'#f0faf6';
+  const cogBorder = selCog==='strong'?'#e0440e':'#0a7c5c';
+  document.getElementById('resultPanel').innerHTML = `
+    <div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:11px;padding:3px 8px;border-radius:4px;font-weight:500;background:${cogBg};color:${cogColor};border:1px solid ${cogBorder};">${selType}</span>
+          <span style="font-size:11px;color:var(--text3);">${domain} · ${selCog==='strong'?'강한 인지':'약한 인지'}</span>
+        </div>
+        <div style="display:flex;gap:6px;">
+          <button class="copy-btn" onclick="copyText()" id="copyTextBtn">📋 텍스트 복사</button>
+          <button class="copy-btn" onclick="copyExcel()" id="copyExcelBtn">📊 엑셀 복사</button>
+        </div>
+      </div>
+      <div class="item-num">문항 #${String(itemCount).padStart(3,'0')}</div>
+      ${item.auxiliaryInfo?`<div class="aux-box">${item.auxiliaryInfo.replace(/\n/g,'<br>')}</div>`:''}
+      <div class="stem">${item.stem}</div>
+      <div>${item.options.map((opt,i)=>`
+        <div class="opt${i===item.correctIndex?' correct':''}">
+          <span class="opt-num">${i+1}</span>
+          <span style="flex:1">${opt}</span>
+          ${i===item.correctIndex?'<span class="correct-mark">✓ 정답</span>':''}
+        </div>`).join('')}
+      </div>
+      <div class="tags">
+        ${Object.entries(item.ontologySlots||{}).map(([k,v])=>`<span class="tag">[${k}] ${v}</span>`).join('')}
+      </div>
+    </div>`;
+  window._currentItem = { item, domain };
+}
+
+function addHistory(item, domain) {
+  historyArr.unshift({ item, domain, type: selType, cog: selCog, num: itemCount });
+  if (historyArr.length > 8) historyArr.pop();
+  document.getElementById('historyPanel').style.display = 'block';
+  document.getElementById('historyList').innerHTML = historyArr.map((h,i)=>`
+    <div class="hist-item" onclick="loadHistory(${i})">
+      <div style="display:flex;gap:6px;margin-bottom:3px;">
+        <span style="font-size:10px;padding:2px 7px;border-radius:10px;background:${h.cog==='strong'?'#fff5f2':'#f0faf6'};color:${h.cog==='strong'?'#c03800':'#076648'};border:1px solid ${h.cog==='strong'?'#e0440e':'#0a7c5c'};font-weight:500;">${h.type}</span>
+        <span style="font-size:10px;color:var(--text3);">${h.domain} · #${String(h.num).padStart(3,'0')}</span>
+      </div>
+      <div style="color:var(--text)">${(h.item.stem||'').slice(0,52)}${(h.item.stem||'').length>52?'…':''}</div>
+    </div>`).join('');
+}
+
+function loadHistory(i) {
+  const h = historyArr[i];
+  selType = h.type; selCog = h.cog; itemCount = h.num;
+  renderItem(h.item, h.domain);
+}
+
+function buildPlainText(item, domain) {
+  const num = String(itemCount).padStart(3,'0');
+  const cogLabel = selCog==='strong'?'강한 인지이론':'약한 인지이론';
+  const lines = [];
+  lines.push(`[문항 #${num}] ${domain} · ${selType} · ${cogLabel}`);
+  lines.push('');
+  if (item.auxiliaryInfo) {
+    lines.push('【보조정보】');
+    lines.push(item.auxiliaryInfo);
+    lines.push('');
+  }
+  lines.push(item.stem);
+  lines.push('');
+  item.options.forEach((opt, i) => {
+    const mark = i === item.correctIndex ? ' ← 정답' : '';
+    lines.push(`${i+1}. ${opt}${mark}`);
+  });
+  lines.push('');
+  lines.push(`정답: ${item.correctIndex+1}번`);
+  if (item.ontologySlots) {
+    lines.push('');
+    lines.push('【온톨로지 슬롯】');
+    Object.entries(item.ontologySlots).forEach(([k,v]) => lines.push(`[${k}] ${v}`));
+  }
+  return lines.join('\n');
+}
+
+function buildExcelText(item, domain) {
+  const num = String(itemCount).padStart(3,'0');
+  const cogLabel = selCog==='strong'?'강한 인지이론':'약한 인지이론';
+  const slots = Object.entries(item.ontologySlots||{}).map(([k,v])=>`[${k}]${v}`).join(' / ');
+  // 탭 구분: 문항번호 \t 영역 \t 유형 \t 인지수준 \t 보조정보 \t 문항줄기 \t 1번 \t 2번 \t 3번 \t 4번 \t 5번 \t 정답번호 \t 슬롯
+  const cols = [
+    `#${num}`,
+    domain,
+    selType,
+    cogLabel,
+    item.auxiliaryInfo || '',
+    item.stem,
+    ...item.options,
+    String(item.correctIndex + 1),
+    slots
+  ];
+  return cols.join('\t');
+}
+
+function copyText() {
+  if (!window._currentItem) return;
+  const { item, domain } = window._currentItem;
+  const text = buildPlainText(item, domain);
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById('copyTextBtn');
+    if (btn) { btn.textContent = '✓ 복사됨'; setTimeout(() => btn.textContent = '📋 텍스트 복사', 1500); }
+  });
+}
+
+function copyExcel() {
+  if (!window._currentItem) return;
+  const { item, domain } = window._currentItem;
+  const text = buildExcelText(item, domain);
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById('copyExcelBtn');
+    if (btn) { btn.textContent = '✓ 복사됨'; setTimeout(() => btn.textContent = '📊 엑셀 복사', 1500); }
+  });
+}
+</script>
+</body>
+</html>
